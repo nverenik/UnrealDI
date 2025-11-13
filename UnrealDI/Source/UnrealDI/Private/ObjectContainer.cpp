@@ -152,8 +152,11 @@ void UObjectContainer::AddRegistration(UClass* Interface, TSoftClassPtr<UObject>
     Resolvers.Emplace(FResolver{ MoveTemp(EffectiveClass), Lifetime });
 }
 
-void UObjectContainer::InitServices()
+void UObjectContainer::FinalizeCreation()
 {
+    // build inheritance chain
+    AppendInheritanceChain(InheritanceChain);
+
     if (ParentContainer == nullptr)
     {
         // no point in creating Default Factory if we have parent container. we can take it from there
@@ -246,8 +249,8 @@ UObject* UObjectContainer::ResolveImpl(const FResolver& Resolver, const UObjectC
         checkf(Result != nullptr, TEXT("IInstanceFactory must never return nullptr. Check project specific implementation"));
         FObjectContainerDelegates::OnObjectConstructedDelegate.Broadcast(*Result, *OwningContainer);
 
+        // Resolver may become invalid after this call to Inject
         OwningContainer->Inject(Result);
-        // Resolver may be invalid after this call
         FObjectContainerDelegates::OnObjectInjectedDelegate.Broadcast(*Result, *OwningContainer);
 
         Factory->FinalizeCreation(Result);
@@ -263,15 +266,13 @@ UObject* UObjectContainer::ResolveImpl(const FResolver& Resolver, const UObjectC
 template <bool bCheck>
 TObjectsCollection<UObject> UObjectContainer::ResolveAllImpl(UClass* Type) const
 {
-    const UObjectContainer* Container = this;
     int32 TotalResolvers = 0;
 
     // calculate total count, so we can allocate enough memory
-    while (Container)
+    for (UObjectContainer* Container : InheritanceChain)
     {
         const FResolversArray* Resolvers = Container->Registrations.Find(Type);
         TotalResolvers += Resolvers ? Resolvers->Num() : 0;
-        Container = Container->ParentContainer;
     }
 
     if constexpr (bCheck)
@@ -290,27 +291,30 @@ TObjectsCollection<UObject> UObjectContainer::ResolveAllImpl(UClass* Type) const
     // Data will be owned by TObjectsCollection and freed by it
     UObject** Data = (UObject**)FMemory::Malloc(TotalResolvers * sizeof(UObject*));
 
-    UObject** Iter = Data; // we need a copy of Data, because AppendObjectsCollection will modify it
-    AppendObjectsCollection(Type, Iter);
+    UObject** Iter = Data; // we need a copy of Data, because we will modify it
+    for (UObjectContainer* Container : InheritanceChain)
+    {
+        // Make a copy of the resolvers list, as the registrations map may reallocate
+        // if auto-registered classes are added during iteration
+        FResolversArray Resolvers = Container->Registrations.FindRef(Type);
+        for (const FResolver& Resolver : Resolvers)
+        {
+            *Iter = ResolveImpl(Resolver, Container);
+            ++Iter;
+        }
+    }
 
     return TObjectsCollection<UObject>(Data, TotalResolvers);
 }
 
-void UObjectContainer::AppendObjectsCollection(UClass* Type, UObject**& Data) const
+void UObjectContainer::AppendInheritanceChain(TArray<UObjectContainer*>& OutChain)
 {
-    if (ParentContainer)
+    if (ParentContainer != nullptr)
     {
-        ParentContainer->AppendObjectsCollection(Type, Data);
+        ParentContainer->AppendInheritanceChain(OutChain);
     }
 
-    // Make a copy of the resolvers list, as the registrations map may reallocate
-    // if auto-registered classes are added during iteration
-    FResolversArray Resolvers = Registrations.FindRef(Type);
-    for (const FResolver& Resolver : Resolvers)
-    {
-        *Data = ResolveImpl(Resolver, this);
-        ++Data;
-    }
+    OutChain.Add(this);
 }
 
 void UObjectContainer::AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector)

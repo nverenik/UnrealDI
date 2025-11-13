@@ -119,4 +119,26 @@ public:
     {
         return IsRegistered(UnrealDI_Impl::TStaticClass<T>::StaticClass());
     }
+
+
+    /*
+     * Invokes provided function injecting dependencies into its arguments the same way InitDependencies are usually invoked
+     * Example:
+     *    Resolver->InvokeWithDependencies([](UMyService* Service, TScriptInterface<IMyOtherService>&& OtherService)
+     *    {  // Do Something with dependencies  });
+     * @param Function - lambda with arguments that should be resolved
+     */
+    template <typename TFunction>
+    void InvokeWithDependencies(TFunction&& Function);
 };
+
+#if CPP // without this #if UHT complains about includes after "IResolver.generated.h"
+// this include must be after IResolver is fully declared
+#include "DI/Impl/InvokeWithDependencies.h"
+#endif
+
+template<typename TFunction>
+inline void IResolver::InvokeWithDependencies(TFunction&& Function)
+{
+    UnrealDI_Impl::TFunctionWithDependenciesInvokerProvider<TFunction>::Invoker::Invoke(*this, Forward<TFunction>(Function));
+}

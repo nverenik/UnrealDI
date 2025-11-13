@@ -61,7 +61,7 @@ public:
     template<typename TObject>
     UnrealDI_Impl::TRegistrationConfigurator_ForFactory<TObject>& RegisterFactory(TFunction< TObject* () > Factory)
     {
-        check(Factory.IsSet());
+        check(Factory);
         return AddConfigurator< UnrealDI_Impl::TRegistrationConfigurator_ForFactory< TObject > >(Factory);
     }
 

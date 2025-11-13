@@ -22,8 +22,6 @@ namespace UnrealDI_Impl
         , public RegistrationOperations::TAsOperation< ThisType >
         , public RegistrationOperations::TAsSelfOperation< ThisType >
         , public RegistrationOperations::TByInterfacesOperation< ThisType >
-        , public RegistrationOperations::TSingleInstanceOperation< ThisType >
-        , public RegistrationOperations::TWeakSingleInstanceOperation< ThisType >
     {
     public:
         using ImplType = TObject;
@@ -37,17 +35,15 @@ namespace UnrealDI_Impl
         {
         }
 
-        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
-        {
-            return MakeShared<UnrealDI_Impl::FLifetimeHandler_CustomFactory>(*reinterpret_cast<const TFunction< UObject* () >*>(&Factory));
-        }
-
     private:
         friend class RegistrationOperations::TAsOperation< ThisType >;
         friend class RegistrationOperations::TAsSelfOperation< ThisType >;
         friend class RegistrationOperations::TByInterfacesOperation< ThisType >;
-        friend class RegistrationOperations::TSingleInstanceOperation< ThisType >;
-        friend class RegistrationOperations::TWeakSingleInstanceOperation< ThisType >;
+
+        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
+        {
+            return MakeShared<UnrealDI_Impl::FLifetimeHandler_CustomFactory>(*reinterpret_cast<const TFunction< UObject * () >*>(&Factory));
+        }
 
         TFunction< TObject* () > Factory;
     };

@@ -47,11 +47,6 @@ namespace UnrealDI_Impl
             LifetimeHandlerFactory = &FLifetimeHandler_Transient::Make;
         }
 
-        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
-        {
-            return LifetimeHandlerFactory();
-        }
-
     private:
         friend class RegistrationOperations::TAsOperation< ThisType >;
         friend class RegistrationOperations::TAsSelfOperation< ThisType >;
@@ -59,6 +54,11 @@ namespace UnrealDI_Impl
         friend class RegistrationOperations::TSingleInstanceOperation< ThisType >;
         friend class RegistrationOperations::TWeakSingleInstanceOperation< ThisType >;
         friend class RegistrationOperations::TFromBlueprintOperation< ThisType, TObject >;
+
+        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
+        {
+            return LifetimeHandlerFactory();
+        }
 
         FLifetimeHandlerFactory LifetimeHandlerFactory;
     };

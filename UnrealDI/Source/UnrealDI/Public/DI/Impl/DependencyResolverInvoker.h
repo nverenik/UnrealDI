@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "DI/DependencyResolver.h"
-
 namespace UnrealDI_Impl
 {
     /*
@@ -13,7 +11,7 @@ namespace UnrealDI_Impl
     template <typename TDependency>
     struct TDependencyResolverInvoker
     {
-        using TResultType = typename TDecay<TDependency>::Type;
+        using FResultType = typename TDecay<TDependency>::Type;
 
         TDependencyResolverInvoker(const IResolver& Resolver)
             : Resolver(Resolver)
@@ -21,11 +19,20 @@ namespace UnrealDI_Impl
         }
 
         // this conversion operator is called when this object is casted to a parameter of InitDependencies method
-        operator TResultType()
-        {
-            return TDependencyResolver< TResultType >::Resolve(Resolver);
-        }
+        operator FResultType();
 
         const IResolver& Resolver;
     };
+}
+
+#include "DI/Impl/CommonDependencyResolvers.h"
+
+namespace UnrealDI_Impl
+{
+    template <typename TDependency>
+    TDependencyResolverInvoker<TDependency>::operator TDependencyResolverInvoker<TDependency>::FResultType()
+    {
+        using FResolverType = ::TDependencyResolver< FResultType >;
+        return FResolverType::Resolve(Resolver);
+    }
 }

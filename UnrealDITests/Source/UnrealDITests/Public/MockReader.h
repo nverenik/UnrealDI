@@ -16,3 +16,9 @@ public:
 
     FString NextValue;
 };
+
+UCLASS(Blueprintable)
+class UNREALDITESTS_API UMockBetterReader : public UMockReader, public IBetterReader
+{
+    GENERATED_BODY()
+};

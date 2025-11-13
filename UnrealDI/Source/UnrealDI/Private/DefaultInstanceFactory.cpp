@@ -29,9 +29,12 @@ UObject* UDefaultInstanceFactory::Create(UObject* Outer, UClass* EffectiveClass)
 
 #if UE_VERSION_OLDER_THAN(5,5,0)
     UObject* ExistingObject = StaticFindObjectFastInternal(EffectiveClass, Outer, NewObjectName, true, RF_NoFlags, IsInAsyncLoadingThread() ? EInternalObjectFlags::None : EInternalObjectFlags::AsyncLoading);
-#else
+#elif UE_VERSION_OLDER_THAN(5,7,0)
     UObject* ExistingObject = StaticFindObjectFastInternal(EffectiveClass, Outer, NewObjectName, true, RF_NoFlags, IsInAsyncLoadingThread() ? EInternalObjectFlags::None : EInternalObjectFlags_AsyncLoading);
+#else
+    UObject* ExistingObject = StaticFindObjectFastInternal(EffectiveClass, Outer, NewObjectName, EFindObjectFlags::ExactClass, RF_NoFlags, IsInAsyncLoadingThread() ? EInternalObjectFlags::None : EInternalObjectFlags_AsyncLoading);
 #endif
+
     if (ExistingObject != nullptr)
     {
         // object with this name already exists, fallback to unique name

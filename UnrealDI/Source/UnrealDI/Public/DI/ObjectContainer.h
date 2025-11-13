@@ -5,7 +5,7 @@
 #include "IResolver.h"
 #include "IInjector.h"
 #include "IInjectorProvider.h"
-#include "DI/Impl/InvokeWithDependencies.h"
+#include "DI/ObjectContainerIterator.h"
 #include "ObjectContainer.generated.h"
 
 class IInstanceFactory;
@@ -13,7 +13,22 @@ class IInstanceFactory;
 namespace UnrealDI_Impl
 {
     class FLifetimeHandler;
+    class FObjectContainerIteratorBase;
 }
+
+/*
+ * Controls which objects to return during iteration
+ */
+enum class EObjectContainerIteratorFlags : uint8
+{
+    /* Return objects only in current container */
+    None = 0,
+
+    /* Return objects in current container and all of its parents.
+     * Objects from parent containers are returned first
+     */
+    IncludeParent = 1 << 0,
+};
 
 UCLASS()
 class UNREALDI_API UObjectContainer : public UObject, public IResolver, public IInjector, public IInjectorProvider
@@ -37,6 +52,7 @@ public:
     using IResolver::TryResolveAll;
     using IResolver::TryResolveFactory;
     using IResolver::IsRegistered;
+    using IResolver::InvokeWithDependencies;
     // ~End IResolver interface
 
     // ~Begin IInjector interface
@@ -49,20 +65,22 @@ public:
     // ~End IInjectorProvider interface
 
     /*
-     * Invokes provided function injecting dependencies into its arguments the same way InitDependencies are usually invoked
-     * Example:
-     *    Container->InvokeWithDependencies([](UMyService* Service, TScriptInterface<IMyOtherService>&& OtherService)
-     *    {  // Do Something with dependencies  });
+     * Returns iterator that allows you to get access to all objects of class T registered in the Container.
+     * T may be either subclass of UObject or IInterface.
+     * @param Flags - Select which objects should be returned
      */
-    template <typename TFunction>
-    void InvokeWithDependencies(TFunction&& Function)
+    template <typename T>
+    TObjectContainerIterator<T> CreateIterator(EObjectContainerIteratorFlags Flags = EObjectContainerIteratorFlags::None) const
     {
-        UnrealDI_Impl::TFunctionWithDependenciesInvokerProvider<TFunction>::Invoker::Invoke(*this, Forward<TFunction>(Function));
+        return EnumHasAnyFlags(Flags, EObjectContainerIteratorFlags::IncludeParent) ?
+            TObjectContainerIterator<T>(MakeConstArrayView(InheritanceChain)) :
+            TObjectContainerIterator<T>(MakeConstArrayView(InheritanceChain).Right(1));
     }
 
 private:
     friend class FObjectContainerBuilder;
     friend class FInjectOnConstruction;
+    friend class UnrealDI_Impl::FObjectContainerIteratorBase;
 
     struct FResolver
     {
@@ -71,7 +89,7 @@ private:
     };
 
     void AddRegistration(UClass* Interface, TSoftClassPtr<UObject> EffectiveClass, const TSharedRef< UnrealDI_Impl::FLifetimeHandler >& Lifetime);
-    void InitServices();
+    void FinalizeCreation();
 
     template <bool bCheck>
     TTuple<const FResolver*, const UObjectContainer*> GetResolver(UClass* Type) const;
@@ -81,7 +99,7 @@ private:
     template <bool bCheck>
     TObjectsCollection<UObject> ResolveAllImpl(UClass* Type) const;
 
-    void AppendObjectsCollection(UClass* Type, UObject**& Data) const;
+    void AppendInheritanceChain(TArray<UObjectContainer*>& OutChain);
 
     static void AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector);
 
@@ -95,5 +113,8 @@ private:
 
     using FResolversArray = TArray<FResolver, TInlineAllocator<2>>;
     TMap<UClass*, FResolversArray> Registrations;
+
     TArray<TScriptInterface<IInstanceFactory>, TInlineAllocator<4>> InstanceFactories;
+
+    TArray<UObjectContainer*> InheritanceChain; // container chain starting from most parent to this one
 };

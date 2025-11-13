@@ -2,19 +2,15 @@
 
 #pragma once
 
-#include "DI/Impl/DependencyResolverInvoker.h"
-
 namespace UnrealDI_Impl
 {
+
     template <typename... TArgs>
     struct TFunctionWithDependenciesInvoker
     {
         /* Invokes given function with args injected from Container */
         template <typename TFunction>
-        static void Invoke(const IResolver& Resolver, TFunction&& Function)
-        {
-            Function(UnrealDI_Impl::TDependencyResolverInvoker<TArgs>(Resolver)...);
-        }
+        static void Invoke(const IResolver& Resolver, TFunction&& Function);
     };
 
     /* Provides type of TFunctionWithDependenciesInvoker based on TFunction arguments */
@@ -29,5 +25,23 @@ namespace UnrealDI_Impl
     {
         using Invoker = TFunctionWithDependenciesInvoker<TArgs...>;
     };
+
+}
+
+#include "DI/Impl/DependencyResolverInvoker.h"
+#include "DI/Impl/CommonDependencyResolvers.h"
+
+class IResolver;
+
+namespace UnrealDI_Impl
+{
+
+    /* Invokes given function with args injected from Container */
+    template <typename... TArgs>
+    template <typename TFunction>
+    void TFunctionWithDependenciesInvoker<TArgs...>::Invoke(const IResolver& Resolver, TFunction&& Function)
+    {
+        Function(UnrealDI_Impl::TDependencyResolverInvoker<TArgs>(Resolver)...);
+    }
 
 }

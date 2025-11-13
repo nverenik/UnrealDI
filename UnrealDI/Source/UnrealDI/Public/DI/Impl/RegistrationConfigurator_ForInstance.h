@@ -31,15 +31,15 @@ namespace UnrealDI_Impl
         {
         }
 
-        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
-        {
-            return MakeShared<UnrealDI_Impl::FLifetimeHandler_Instance>(Instance);
-        }
-
     private:
         friend class RegistrationOperations::TAsOperation< ThisType >;
         friend class RegistrationOperations::TAsSelfOperation< ThisType >;
         friend class RegistrationOperations::TByInterfacesOperation< ThisType >;
+
+        TSharedRef<FLifetimeHandler> CreateLifetimeHandler() const override
+        {
+            return MakeShared<UnrealDI_Impl::FLifetimeHandler_Instance>(Instance);
+        }
 
         TObject* Instance;
     };

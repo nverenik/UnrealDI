@@ -102,6 +102,7 @@ public:
      */
     TObjectsCollection()
         : Data(nullptr)
+        , Count(0)
     {
     }
 

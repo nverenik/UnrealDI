@@ -5,8 +5,8 @@
 #include "UObject/Interface.h"
 #include "IReader.generated.h"
 
-UINTERFACE()
-class UNREALDITESTS_API UReader : public UInterface
+UINTERFACE(MinimalApi)
+class UReader : public UInterface
 {
     GENERATED_BODY()
 };
@@ -17,4 +17,15 @@ class UNREALDITESTS_API IReader
 
 public:
     virtual FString Read() = 0;
+};
+
+UINTERFACE(MinimalApi)
+class UBetterReader : public UInterface
+{
+    GENERATED_BODY()
+};
+
+class UNREALDITESTS_API IBetterReader
+{
+    GENERATED_BODY()
 };

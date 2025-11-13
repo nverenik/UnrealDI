@@ -51,21 +51,23 @@ void FObjectContainerBuilder::AddRegistrationsToContainer(UObjectContainer* Cont
         }
     }
 
+    TSharedRef<FLifetimeHandler> ContainerInstance = MakeShared<FLifetimeHandler_Instance>(Container);
+
     // register container itself as IResolver
-    Container->AddRegistration(UResolver::StaticClass(), {}, MakeShared<FLifetimeHandler_Instance>(Container));
+    Container->AddRegistration(UResolver::StaticClass(), UObjectContainer::StaticClass(), ContainerInstance);
 
     // register container itself as IInjector
-    Container->AddRegistration(UInjector::StaticClass(), {}, MakeShared<FLifetimeHandler_Instance>(Container));
+    Container->AddRegistration(UInjector::StaticClass(), UObjectContainer::StaticClass(), ContainerInstance);
 
     // register container itself as IInjectorProvider, if not customized in either self or parent
     auto [Resolver, _] = Container->FindResolver(UInjectorProvider::StaticClass());
-    if (Resolver == nullptr || Resolver->EffectiveClass.IsNull())
+    if (Resolver == nullptr || Resolver->EffectiveClass == UObjectContainer::StaticClass())
     {
-        Container->AddRegistration(UInjectorProvider::StaticClass(), {}, MakeShared<FLifetimeHandler_Instance>(Container));
+        Container->AddRegistration(UInjectorProvider::StaticClass(), UObjectContainer::StaticClass(), ContainerInstance);
     }
 
     // finalize creation and let Container create its services
-    Container->InitServices();
+    Container->FinalizeCreation();
 
     // resolve all classes that are marked with bAutoCreate
     for (auto& Registration : Registrations)

@@ -620,4 +620,40 @@ void ObjectContainerBuilderSpec::Define()
             TestEqual("Second Reader Outer", Readers[1]->GetOuter(), B);
         });
     });
+
+    Describe("ByInterfaces", [this]()
+    {
+        It("Should register only interfaces in Current class by default", [this]
+        {
+            FObjectContainerBuilder Builder;
+            Builder.RegisterType<UMockBetterReader>().ByInterfaces();
+
+            UObjectContainer* Container = Builder.Build();
+
+            TestTrue("IBetterReader registered", Container->IsRegistered<IBetterReader>());
+            TestFalse("IReader registered", Container->IsRegistered<IReader>());
+        });
+
+        It("Should register only interfaces in Current class when requested", [this]
+        {
+            FObjectContainerBuilder Builder;
+            Builder.RegisterType<UMockBetterReader>().ByInterfaces(EInterfaceSearchOptions::CurrentClass);
+
+            UObjectContainer* Container = Builder.Build();
+
+            TestTrue("IBetterReader registered", Container->IsRegistered<IBetterReader>());
+            TestFalse("IReader registered", Container->IsRegistered<IReader>());
+        });
+
+        It("Should register interfaces in Current and Super class when requested", [this]
+        {
+            FObjectContainerBuilder Builder;
+            Builder.RegisterType<UMockBetterReader>().ByInterfaces(EInterfaceSearchOptions::CurrentAndSuper);
+
+            UObjectContainer* Container = Builder.Build();
+
+            TestTrue("IBetterReader registered", Container->IsRegistered<IBetterReader>());
+            TestTrue("IReader registered", Container->IsRegistered<IReader>());
+        });
+    });
 }
