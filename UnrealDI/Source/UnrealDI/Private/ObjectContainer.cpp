@@ -1,11 +1,16 @@
 // Copyright Andrei Sudarikov. All Rights Reserved.
 
 #include "DI/ObjectContainer.h"
+#include "DI/ObjectContainerDelegates.h"
 #include "DI/ObjectsCollection.h"
 #include "DI/Impl/DefaultInstanceFactory.h"
 #include "DI/Impl/DependenciesRegistry.h"
 #include "DI/Impl/Lifetimes.h"
 #include "Algo/Copy.h"
+
+FObjectContainerDelegates::FOnObjectCreated FObjectContainerDelegates::OnObjectConstructedDelegate;
+FObjectContainerDelegates::FOnObjectCreated FObjectContainerDelegates::OnObjectInjectedDelegate;
+FObjectContainerDelegates::FOnObjectCreated FObjectContainerDelegates::OnObjectCreatedDelegate;
 
 UObject* UObjectContainer::Resolve(UClass* Type) const
 {
@@ -239,13 +244,17 @@ UObject* UObjectContainer::ResolveImpl(const FResolver& Resolver, const UObjectC
 
         Result = Factory->Create(OwningContainer->OuterForNewObjects, EffectiveClass);
         checkf(Result != nullptr, TEXT("IInstanceFactory must never return nullptr. Check project specific implementation"));
+        FObjectContainerDelegates::OnObjectConstructedDelegate.Broadcast(*Result, *OwningContainer);
 
         OwningContainer->Inject(Result);
         // Resolver may be invalid after this call
+        FObjectContainerDelegates::OnObjectInjectedDelegate.Broadcast(*Result, *OwningContainer);
 
         Factory->FinalizeCreation(Result);
 
         LifetimeHandler.Set(Result);
+
+        FObjectContainerDelegates::OnObjectCreatedDelegate.Broadcast(*Result, *OwningContainer);
     }
 
     return Result;
@@ -294,14 +303,13 @@ void UObjectContainer::AppendObjectsCollection(UClass* Type, UObject**& Data) co
         ParentContainer->AppendObjectsCollection(Type, Data);
     }
 
-    const FResolversArray* Resolvers = Registrations.Find(Type);
-    if (Resolvers)
+    // Make a copy of the resolvers list, as the registrations map may reallocate
+    // if auto-registered classes are added during iteration
+    FResolversArray Resolvers = Registrations.FindRef(Type);
+    for (const FResolver& Resolver : Resolvers)
     {
-        for (const FResolver& Resolver : *Resolvers)
-        {
-            *Data = ResolveImpl(Resolver, this);
-            ++Data;
-        }
+        *Data = ResolveImpl(Resolver, this);
+        ++Data;
     }
 }
 
